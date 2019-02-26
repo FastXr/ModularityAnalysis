@@ -1,11 +1,13 @@
 import networkx as nx
 import cobra
 import json
+import operator
+
 
 class ModularityFinder:
     def __init__(self, model_):
-        self.positive_network = nx.MultiGraph()
-        self.negative_network = nx.MultiGraph()
+        self.positive_network = nx.MultiDiGraph()
+        self.negative_network = nx.MultiDiGraph()
         try:
             self.model = cobra.io.load_json_model(model_)
         except:
@@ -13,18 +15,26 @@ class ModularityFinder:
 
 
 
-    def analysis(self, reactions):
-        self.case_network_builder(reactions)
-        self.positive_analysis = nx.algorithms.community.modularity_max.greedy_modularity_communities(self.positive_network)
-        self.negative_analysis = nx.algorithms.community.modularity_max.greedy_modularity_communities(self.negative_network)
-
+    def analysis(self, reactions, scale=None):
+        self.case_network_builder(reactions, scale=scale)
+        #return self.positive_network, self.negative_network
+        # TODO IMPLEMENT THIs
+        self.positive_analysis = nx.algorithms.community.centrality.girvan_newman(self.positive_network)#, most_valuable_edge=self.most_central_edge)
+        self.negative_analysis = nx.algorithms.community.centrality.girvan_newman(self.negative_network)#, most_valuable_edge=self.most_central_edge)
+        #self.positive_analysis = nx.algorithms.community.modularity_max.greedy_modularity_communities(self.positive_network, weight=True)
+        #self.negative_analysis = nx.algorithms.community.modularity_max.greedy_modularity_communities(self.negative_network, weight=True)
+        #print(self.positive_analysis)
         return self.positive_analysis, self.negative_analysis
 
-    def case_network_builder(self, reactions):
+    def case_network_builder(self, reactions, scale=None):
+        # Scale is a tuple that eliminates values between those values
         reactions_ = self.json_converter(reactions)
         reactions__ = self.average_score_calculator(reactions_)
         for reaction in reactions__:
             v = reactions__[reaction]
+            if scale != None:
+                if scale[0] < v < scale[1]:
+                    continue
             if v > 0:
                 self.add_edge(reaction, v, self.positive_network)
             elif v <= 0:
@@ -91,6 +101,7 @@ class ModularityFinder:
         with open(file) as f:
             data = json.load(f)
         return data
+
 
 if __name__ == '__main__':
     m = ModularityFinder('./Datasets/recon2.json')
