@@ -31,29 +31,16 @@ class ModularityAnalysis:
         print('New anaylsis started')
         print(datetime.datetime.now())
 
-
         # Changed by me at 25/02 20.30 put it back This is working BTW
-        positive_generator = self.generator_iterator(positive, depth)
-
-
-
-        #limited = itertools.takewhile(lambda c: len(c) <= depth, positive)
-        #positive_generator = self.generator_iterator(limited, depth-2)
-
-
-
-        print('Generator Ended')
-
-        #positive_generator = self.generator_iterator(limited, n=int(depth/2))
-
+        positive_depth, negative_depth = p.network_sizes()
+        positive_generator = self.generator_iterator(positive, positive_depth)
         positive_updated = tuple(c for c in next(positive_generator))
-        #positive_updated = tuple(c for c in positive_generator)
-        #print(positive_updated)
+
         for p_ in positive_updated:  # Top 10
             self.analysis_handler(p_, dataset[0], type_='Positive')
         print('Report Part')
         print(datetime.datetime.now())
-        self.report(self.positive_subsystems, name + '_depth{}'.format(depth), 'Positive')
+        self.report(self.positive_subsystems, name + '_depth{}'.format(positive_depth), 'Positive')
         print(datetime.datetime.now())
         print('Ends')
         # TODO ADD NEGATIVE PART IF WORKS
@@ -61,13 +48,13 @@ class ModularityAnalysis:
         print('Negative Part Stars')
         print(datetime.datetime.now())
 
-        negative_generator = self.generator_iterator(negative, depth)
+        negative_generator = self.generator_iterator(negative, negative_depth)
 
         negative_updated = tuple(c for c in next(negative_generator))
 
         for p_ in negative_updated:  # Top 10
             self.analysis_handler(p_, dataset[0], type_='Negative')
-        self.report(self.negative_subsystems, name + '_depth{}'.format(depth), 'Negative')
+        self.report(self.negative_subsystems, name + '_depth{}'.format(negative_depth), 'Negative')
 
         print(datetime.datetime.now())
         print('END OF ALLLL')
@@ -75,110 +62,6 @@ class ModularityAnalysis:
 
 
 
-
-
-
-
-
-
-
-
-    def analysis_old(self, dataset_, scale=None, depth=1):
-        name = self.disease_name(dataset_)
-        # TODO add depth to name if you exceed depth
-        if scale != None:
-            name += '_scaled{}_{}'.format(scale[0], scale[1])
-
-        p = ModularityFinder(self.model)
-        dataset = self.json_converter(dataset_)
-        positive, negative = p.analysis(dataset_, scale=scale)
-
-        # TODO Update This part since our dataset changed
-        k = depth
-        print('Last Part Started')
-
-        # positive_updated = tuple(c for c in next(positive))
-
-
-        for communities in itertools.islice(positive, k):
-            positive_updated = tuple(c for c in communities)
-        # for communities in itertools.islice(negative, k):
-        #     negative_updated = tuple(sorted(c) for c in communities)
-        print('Part middle')
-        for p_ in positive_updated:  # Top 10
-            self.analysis_handler(p_, dataset[0], type_='Positive')
-        print('Last part Ended')
-
-
-        self.report(self.positive_subsystems, name, 'Positive')
-        # self.report(self.negative_subsystems, name, 'Negative')
-
-    def analysis(self, dataset_, scale=None, depth=1):
-        name = self.disease_name(dataset_)
-        # TODO add depth to name if you exceed depth
-        if scale != None:
-            name += '_scaled{}_{}'.format(scale[0],scale[1])
-
-        p = ModularityFinder(self.model)
-        dataset = self.json_converter(dataset_)
-        positive, negative = p.analysis(dataset_, scale=scale)
-
-        # TODO Update This part since our dataset changed
-        k = depth
-        print('Come HERE')
-        depth_positive = 1
-        for communities in itertools.islice(positive, k):
-            print('ENISSSS')
-            print('Positive{}'.format(depth_positive))
-            self.negative_subsystems = {}
-            self.positive_subsystems = {}
-            self.positive_counter = 1
-            self.negative_counter = 1
-            # TODO we may use for loop to iterate to curtain point consider it. !!!!!
-            positive_updated = tuple(c for c in communities)
-            for p_ in positive_updated:  # Top 10
-                self.analysis_handler(p_, dataset[0], type_='Positive')
-            self.report(self.positive_subsystems, name+'_depth{}'.format(depth_positive), 'Positive')
-            print(datetime.datetime.now())
-            depth_positive += 1
-
-        depth_negative = 1
-        for communities in itertools.islice(negative, k):
-            """
-            This part is added by stealing from __init__
-            We may change location 
-            """
-            print('Negative'.format(depth_negative))
-            self.negative_subsystems = {}
-            self.positive_subsystems = {}
-            self.positive_counter = 1
-            self.negative_counter = 1
-            negative_updated = tuple(c for c in communities)
-            for n_ in negative_updated:  # Top 10
-                self.analysis_handler(n_, dataset[0], type_='Negative')
-            self.report(self.negative_subsystems, name+'_depth{}'.format(depth_negative), 'Negative')
-            print(datetime.datetime.now())
-            depth_negative += 1
-
-
-
-        # for p_ in positive:  # Top 10
-        #     self.analysis_handler(p_, dataset[0], type_='Positive')
-        # for n_ in negative:  # Top 10
-        #     self.analysis_handler(n_, dataset[0], type_='Negative')
-
-        #self.sorter(self.positive_subsystems[1])
-
-
-
-        #print(self.positive_subsystems)
-        #print(self.negative_subsystems)
-        #print(self.positive_counter)
-        #print(self.negative_counter)
-
-
-        # print(sorted(self.positive_subsystems.items(), key=operator.itemgetter(1), reverse=True))
-        # print(sorted(self.negative_subsystems.items(), key=operator.itemgetter(1), reverse=True))
 
     @staticmethod
     def disease_name(str_):
@@ -231,14 +114,9 @@ class ModularityAnalysis:
         have systems as a key and how many reactions they have in that module as value and their total number of
         reactions, lastly their percentage coverage
         """
-
         subsystem = self.transport_elimination(subsystem)
         print(subsystem)
-        # TODO Check if file exist then act accordingly
         workbook = xlsxwriter.Workbook('./Results/{}_{}.xlsx'.format(name, type_))
-        # IF necessary
-        # TODO implement if condition and type_
-        # TODO implement different sheets
         if type_ == 'Positive':
             sheet = workbook.add_worksheet('Positive')
         elif type_ == 'Negative':
@@ -255,24 +133,17 @@ class ModularityAnalysis:
             sheet.write(row, column, n_)
             column += 1
             row += 1
-            iter = self.sorter(subsystem[n_])
-            for i in iter:
+            iter_ = self.sorter(subsystem[n_])
+            for i in iter_:
                 column = 1
                 sheet.write(row, column, i[0])
+                # Filter to get ride of below 10 percent
+                # if i[1][0] < 10:  # Filter is removed 09/03/2019
+                #     continue
                 for v_ in i[1]:
                     column += 1
                     sheet.write(row, column, v_)
                 row += 1
-
-            # for s_ in subsystem[n_]:
-            #     column = 1
-            #     sheet.write(row, column, s_)
-            #     # For loop start
-            #     for v_ in subsystem[n_][s_]:
-            #         column += 1
-            #         sheet.write(row, column, v_)
-            #     # For loop end
-            #     row += 1
         workbook.close()
     @staticmethod
     def transport_elimination(dict_):
@@ -323,7 +194,7 @@ if __name__ == '__main__':
     # m = ModularityAnalysis('./Datasets/recon2.json', './Datasets/pathway_counts.json')
     # m.analysis('./Datasets/Enis_bc.json', scale=(-100, 100))
 
-    m = ModularityAnalysis('./Datasets/recon2.json', './Datasets/pathway_counts.json')
+    # m = ModularityAnalysis('./Datasets/recon2.json', './Datasets/pathway_counts.json')
     #m.analysis_old('./Datasets/Enis_bc.json', depth=1)
     #m.analysis_new('./Datasets/Enis_bc.json', depth=7)
     #m.analysis('./Datasets/Enis_bc.json', depth=5)
@@ -332,7 +203,7 @@ if __name__ == '__main__':
     #m.analysis_new('./Datasets/Enis_bc.json', depth=25, scale=(-1, 1))
 
     m = ModularityAnalysis('./Datasets/recon2.json', './Datasets/pathway_counts.json')
-    m.analysis_new('./Datasets/Enis_bc.json', depth=35, scale=(-1, 1))
+    m.analysis_new('./Datasets/Enis_bc.json', depth=51, scale=(-1, 1))
 
 
 
