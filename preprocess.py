@@ -1,7 +1,6 @@
 import networkx as nx
 import cobra
 import json
-import operator
 from math import sqrt
 
 
@@ -14,21 +13,12 @@ class ModularityFinder:
         except:
             self.model = model_
 
-
-
     def analysis(self, reactions, scale=None):
         self.case_network_builder(reactions, scale=scale)
-        #return self.positive_network, self.negative_network
-        self.positive_analysis = nx.algorithms.community.centrality.girvan_newman(self.positive_network)
-        # , most_valuable_edge=self.most_central_edge)
-        self.negative_analysis = nx.algorithms.community.centrality.girvan_newman(self.negative_network)
-        # , most_valuable_edge=self.most_central_edge)
-        # self.positive_analysis = nx.algorithms.community.modularity_max.greedy_modularity_
-        # communities(self.positive_network, weight=True)
-        # self.negative_analysis = nx.algorithms.community.modularity_max.greedy_modularity_communities
-        # (self.negative_network, weight=True)
-        # print(self.positive_analysis)
-        return self.positive_analysis, self.negative_analysis
+        positive_analysis = nx.algorithms.community.centrality.girvan_newman(self.positive_network)
+        negative_analysis = nx.algorithms.community.centrality.girvan_newman(self.negative_network)
+        return positive_analysis, negative_analysis
+
     def network_sizes(self):
         return int(sqrt(len(self.positive_network))), int(sqrt(len(self.negative_network)))
 
@@ -46,9 +36,7 @@ class ModularityFinder:
             elif v <= 0:
                 self.add_edge(reaction, v, self.negative_network)
 
-
-
-    def add_edge(self,reaction, value, network):
+    def add_edge(self, reaction, value, network):
         if value < 0:
             value = -value
         metabolites_ = self.model.reactions.get_by_id(reaction).metabolites.items()
@@ -65,7 +53,8 @@ class ModularityFinder:
             for out_ in output_metabolites:
                 network.add_edge(input_, out_, weight=value)
 
-    def average_score_calculator(self, reaction_values):
+    @staticmethod
+    def average_score_calculator(reaction_values):
         """
         Reaction values is a list of dictionaries
         Dictionaries are different people's results.
@@ -83,6 +72,10 @@ class ModularityFinder:
         return average_scoring_dict
 
     def sample_network_builder(self):
+        """
+        :return:
+        This function was used to discover needs for this project as building a decoy network
+        """
         for i in range(len(self.model.reactions)):
             reaction = self.model.reactions.__getitem__(i)
             metabolites = reaction.metabolites.items()
@@ -95,12 +88,10 @@ class ModularityFinder:
                     input_metabolites.append(metabolite)
                 else:
                     output_metabolites.append(metabolite)
-            # There are three ways to add an edge consider all of them
-            # add_edge & add_edges_from & add_weighted_edges_from
-            # weighted edges from seems more suitable
             for input_ in input_metabolites:
                 for out_ in output_metabolites:
                     self.positive_network.add_edge(input_, out_, weight=1.0)
+
     @staticmethod
     def json_converter(file):
         with open(file) as f:
